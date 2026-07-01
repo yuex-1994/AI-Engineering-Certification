@@ -155,7 +155,14 @@ Why is OAuth important for MCP servers, and what security considerations should 
 
 #### Answer
 
-_(insert your answer here)_
+OAuth is important for MCP servers because it acts as a gatekeeper — without it, anyone with the server's URL can call any tool freely. This matters especially when tools have real-world effects like placing orders or accessing user-specific data (e.g. a user's cart contents).
+
+Security considerations when exposing tools to AI clients:
+
+- **Authentication ≠ authorisation** — verifying someone's identity (login) is separate from deciding what they're allowed to do. A production server should check both: did this token come from a real login, and does this user have permission to call this specific tool?
+- **Don't cross user data** — cart contents, order history, and personal details must be scoped to the authenticated user. In this server, the username is tied to the access token (`token_users` table) so the server always knows whose session it is.
+- **Token expiry** — access tokens in this server expire after 1 hour (`expires_in=3600`). Short-lived tokens limit the damage if a token is leaked.
+- **The login check is only as strong as the identity verification behind it** — in this demo, anyone can type any username and get a token. In production, you'd verify with a real credential (password, passkey, or a trusted identity provider like Google or Auth0).
 
 ### Question #2
 
@@ -163,7 +170,9 @@ What is Streamable HTTP transport in MCP, and why might you expose a server publ
 
 #### Answer
 
-_(insert your answer here)_
+Streamable HTTP transport in MCP means the server sends responses back in chunks as they're generated, rather than waiting for the full response before returning anything. This makes interactions feel more responsive, especially for tool calls that return large amounts of data. It also means the connection stays open and can stream multiple events over a single HTTP session — hence "streamable."
+
+The reason to expose a server publicly with OAuth rather than using a local stdio connection comes down to who can access it. A local stdio connection runs both the client and server as processes on the same machine — simple, no auth needed, but only usable by you locally. Exposing the server publicly over HTTP (via ngrok in our case) means any client anywhere on the internet can reach it — other users, other apps, other AI agents — which is how you'd build a real product that others can integrate with. OAuth is what makes that safe: it ensures only authenticated clients can call your tools, so opening up access publicly doesn't mean opening it up to everyone indiscriminately.
 
 ## Activity 1: Extend the MCP Server
 

@@ -119,6 +119,31 @@ async def remove_from_cart(product_id: int) -> dict:
 
 
 @mcp.tool()
+async def search_products(query: str) -> list[dict]:
+    # This is the description the LLM reads to know when and how to call this tool
+    """Search the cat shop catalog by keyword. Matches against product name and description."""
+    # Get a connection to the database
+    db = await oauth_provider._get_db()
+    # Wrap the search query with % wildcards so SQL matches anything containing the keyword
+    pattern = f"%{query}%"
+    # Search both the name and description columns for anything matching the pattern
+    cursor = await db.execute(
+        "SELECT id, name, description, price, category FROM products WHERE name LIKE ? OR description LIKE ?",
+        (pattern, pattern),
+    )
+    # Fetch all matching rows from the database
+    rows = await cursor.fetchall()
+    # If nothing matched, return a friendly message instead of an empty list
+    if not rows:
+        return [{"message": f"No products found matching '{query}'"}]
+    # Convert each database row into a dictionary and return the full list
+    return [
+        {"id": r[0], "name": r[1], "description": r[2], "price": r[3], "category": r[4]}
+        for r in rows
+    ]
+
+
+@mcp.tool()
 async def checkout() -> dict:
     """Complete your purchase. Shows order summary and clears the cart."""
     username = await _get_username()
